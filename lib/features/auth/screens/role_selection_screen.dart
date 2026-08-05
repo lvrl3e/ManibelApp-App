@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_assets.dart';
 import '../widgets/role_selection_card.dart';
 import 'driver_login_screen.dart';
+import 'commuter_signup_screen.dart';
 
 enum UserRole { driver, commuter }
 
@@ -17,22 +18,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   UserRole _selectedRole = UserRole.driver; // Default selection
 
   void _handleContinue() {
-    if (_selectedRole == UserRole.driver) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const DriverLoginScreen(),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Commuter feature coming soon!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+  if (_selectedRole == UserRole.driver) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DriverLoginScreen(),
+      ),
+    );
+  } else {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CommuterSignUpScreen(),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
