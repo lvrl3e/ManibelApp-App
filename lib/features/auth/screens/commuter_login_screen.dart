@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'commuter_signup_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../commuter/screens/commuter_dashboard_screen.dart';
@@ -67,11 +67,22 @@ class _CommuterLoginScreenState extends State<CommuterLoginScreen> {
     // TODO: Add your login/authentication logic here
     await Future.delayed(const Duration(seconds: 1));
 
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool(
+      'commuterLoggedIn',
+      true,
+    );
+
+
     if (!mounted) return;
+
 
     setState(() {
       _isLoading = false;
     });
+
 
     Navigator.pushReplacement(
       context,
