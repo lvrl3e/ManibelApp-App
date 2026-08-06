@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
 import 'commuter_login_screen.dart';
-import '../../commuter/screens/commuter_dashboard_screen.dart';
+import 'commuter_verification_screen.dart';
 
 class CommuterSignUpScreen extends StatefulWidget {
   const CommuterSignUpScreen({super.key});
@@ -145,7 +146,7 @@ class _CommuterSignUpScreenState extends State<CommuterSignUpScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const CommuterDashboardScreen(),
+        builder: (context) => const CommuterVerificationScreen(),
       ),
     );
   }
