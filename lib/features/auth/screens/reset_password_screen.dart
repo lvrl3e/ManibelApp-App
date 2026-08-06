@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import 'password_reset_success_screen.dart';
 import 'commuter_login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -70,36 +71,29 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return null;
   }
 
-  void _resetPassword() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+void _resetPassword() async {
+  if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    // TODO: Replace with your API call
-    await Future.delayed(const Duration(seconds: 1));
+  // TODO: Replace with your API call
+  await Future.delayed(const Duration(seconds: 1));
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+  setState(() {
+    _isLoading = false;
+  });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Password changed successfully!"),
-      ),
-    );
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CommuterLoginScreen(),
-      ),
-      (route) => false,
-    );
-  }
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const PasswordResetSuccessScreen(),
+    ),
+  );
+}
 
   InputDecoration _inputDecoration({
     required String hint,
