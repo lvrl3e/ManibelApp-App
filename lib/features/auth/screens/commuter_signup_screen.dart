@@ -5,6 +5,7 @@ import '../../../core/services/user_session.dart';
 import '../../../core/utils/phone_utils.dart';
 import 'commuter_login_screen.dart';
 import 'commuter_verification_screen.dart';
+import 'role_selection_screen.dart';
 
 class CommuterSignUpScreen extends StatefulWidget {
   const CommuterSignUpScreen({super.key});
@@ -493,18 +494,26 @@ class _CommuterSignUpScreenState extends State<CommuterSignUpScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Back to Welcome Action
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Text(
-                      'Back to Welcome',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.logoBlue,
-                      ),
-                    ),
-                  ),
+// Back to Welcome Action
+GestureDetector(
+  onTap: () {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RoleSelectionScreen(),
+      ),
+      (route) => false,
+    );
+  },
+  child: const Text(
+    'Back to Welcome',
+    style: TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w800,
+      color: AppColors.logoBlue,
+    ),
+  ),
+),
                 ],
               ),
             ),
