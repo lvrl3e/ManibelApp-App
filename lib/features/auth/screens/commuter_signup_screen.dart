@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/user_session.dart';
+import '../../../core/utils/phone_utils.dart';
 import 'commuter_login_screen.dart';
 import 'commuter_verification_screen.dart';
 
@@ -140,13 +141,36 @@ class _CommuterSignUpScreenState extends State<CommuterSignUpScreen> {
 
     if (!mounted) return;
 
+    // Make sure we're checking against whatever account is actually
+    // persisted on disk, not just stale in-memory fields from earlier in
+    // the app's lifetime.
+    await UserSession.instance.loadFromPrefs();
+
+    final normalizedPhone = PhoneUtils.toE164(_phoneController.text.trim());
+
+    // This app only stores one local account (no backend yet), so "number
+    // already used" means it matches the account currently on file.
+    if (UserSession.instance.isRegistered(normalizedPhone)) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This mobile number is already registered. Please log in instead.',
+          ),
+        ),
+      );
+      return;
+    }
+
     // No backend yet — store the new profile in the local session so the
     // dashboard, settings, and change-password screens have real data to
     // work with instead of hard-coded placeholders. Replace this with the
     // response from a real signup API once one exists.
-    UserSession.instance.signUp(
+    await UserSession.instance.signUp(
       fullName: _fullNameController.text.trim(),
-      mobileNumber: _phoneController.text.trim(),
+      mobileNumber: normalizedPhone,
       password: _passwordController.text,
     );
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/user_session.dart';
+import '../../../core/utils/phone_utils.dart';
 import 'otp_verification_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -52,6 +54,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (!mounted) return;
 
+    // Make sure we're checking against whatever account is actually
+    // persisted on disk, not stale in-memory fields.
+    await UserSession.instance.loadFromPrefs();
+
+    final normalizedPhone = PhoneUtils.toE164(_phoneController.text.trim());
+
+    if (!UserSession.instance.isRegistered(normalizedPhone)) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This number is not registered. Please sign up first.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = false;
     });
@@ -59,7 +81,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const OtpVerificationScreen(),
+        builder: (context) => OtpVerificationScreen(
+          mobileNumber: normalizedPhone,
+        ),
       ),
     );
   }

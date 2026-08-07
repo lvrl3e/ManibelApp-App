@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/user_session.dart';
+import '../../../core/utils/phone_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'commuter_signup_screen.dart';
 import 'forgot_password_screen.dart';
@@ -64,9 +66,60 @@ class _CommuterLoginScreenState extends State<CommuterLoginScreen> {
       _isLoading = true;
     });
 
-    // TODO: Add your login/authentication logic here
+    // TODO: Add your login/authentication logic here — replace the block
+    // below with a real API call once a backend exists. For now, this
+    // checks the entered credentials against whatever account was created
+    // locally via CommuterSignUpScreen (persisted through UserSession).
     await Future.delayed(const Duration(seconds: 1));
 
+    // In case the app was just cold-started and nothing has populated
+    // UserSession's in-memory fields yet, load whatever was persisted from
+    // a previous signup/login before comparing.
+    await UserSession.instance.loadFromPrefs();
+
+    // TEMP DEBUG — remove once diagnosed.
+    debugPrint(
+      'LOGIN DEBUG (after loadFromPrefs) | fullName: '
+      '"${UserSession.instance.fullName}" | mobileNumber: '
+      '${UserSession.instance.mobileNumber}',
+    );
+
+    final enteredPhoneE164 = PhoneUtils.toE164(phoneController.text.trim());
+
+    // Check registration before password, so an unrecognized number gets
+    // its own message instead of being lumped in with "wrong password".
+    if (!UserSession.instance.isRegistered(enteredPhoneE164)) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This number is not registered. Please sign up first.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final credentialsValid = UserSession.instance.verifyCredentials(
+      mobileNumber: enteredPhoneE164,
+      password: passwordController.text,
+    );
+
+    if (!credentialsValid) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Incorrect phone number or password.')),
+      );
+      return;
+    }
+
+    await UserSession.instance.logIn(mobileNumber: enteredPhoneE164);
 
     final prefs = await SharedPreferences.getInstance();
 

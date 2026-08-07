@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/user_session.dart';
 import 'password_reset_success_screen.dart';
 import 'commuter_login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  const ResetPasswordScreen({super.key, required this.mobileNumber});
+
+  /// Already normalized to `+63XXXXXXXXXX` — identifies which account's
+  /// password gets updated. Passed down from ForgotPasswordScreen through
+  /// OtpVerificationScreen.
+  final String mobileNumber;
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -71,29 +77,68 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return null;
   }
 
-void _resetPassword() async {
-  if (!(_formKey.currentState?.validate() ?? false)) return;
+  void _resetPassword() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-  setState(() {
-    _isLoading = true;
-  });
+    setState(() {
+      _isLoading = true;
+    });
 
-  // TODO: Replace with your API call
-  await Future.delayed(const Duration(seconds: 1));
+    // TODO: Replace with your API call once a backend exists.
+    await Future.delayed(const Duration(seconds: 1));
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    _isLoading = false;
-  });
+    // Make sure we're updating whatever's actually persisted, not stale
+    // in-memory fields from earlier in the app's lifetime.
+    await UserSession.instance.loadFromPrefs();
 
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const PasswordResetSuccessScreen(),
-    ),
-  );
-}
+    // TEMP DEBUG — remove once diagnosed.
+    debugPrint(
+      'RESET DEBUG (after loadFromPrefs) | fullName: '
+      '"${UserSession.instance.fullName}" | mobileNumber: '
+      '${UserSession.instance.mobileNumber} | widget.mobileNumber: '
+      '${widget.mobileNumber}',
+    );
+
+    final success = await UserSession.instance.resetPassword(
+      mobileNumber: widget.mobileNumber,
+      newPassword: _passwordController.text,
+    );
+
+    // TEMP DEBUG — remove once diagnosed.
+    debugPrint(
+      'RESET DEBUG (after resetPassword, success=$success) | fullName: '
+      '"${UserSession.instance.fullName}"',
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Something went wrong updating your password. Please try again.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PasswordResetSuccessScreen(),
+      ),
+    );
+  }
 
   InputDecoration _inputDecoration({
     required String hint,
