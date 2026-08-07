@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/user_session.dart';
 import 'commuter_login_screen.dart';
 import 'commuter_verification_screen.dart';
 
@@ -138,6 +139,16 @@ class _CommuterSignUpScreenState extends State<CommuterSignUpScreen> {
     await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
+
+    // No backend yet — store the new profile in the local session so the
+    // dashboard, settings, and change-password screens have real data to
+    // work with instead of hard-coded placeholders. Replace this with the
+    // response from a real signup API once one exists.
+    UserSession.instance.signUp(
+      fullName: _fullNameController.text.trim(),
+      mobileNumber: _phoneController.text.trim(),
+      password: _passwordController.text,
+    );
 
     setState(() {
       _isLoading = false;
