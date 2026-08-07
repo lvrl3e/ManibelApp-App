@@ -38,6 +38,8 @@ class _CommuterVerificationScreenState extends State<CommuterVerificationScreen>
   String? _backError;
   String? _ageError;
 
+  bool get _canUploadId => _selectedId != null;
+
   void _handleIdTypeChanged(String? value) {
     setState(() {
       _selectedId = value;
@@ -53,7 +55,9 @@ class _CommuterVerificationScreenState extends State<CommuterVerificationScreen>
   }
 
   Future<void> _pickImage({required bool isFront}) async {
-    if (_isPickingImage) return;
+    // Guard at the source too, not just via the tile's disabled state — in
+    // case this ever gets called some other way before an ID type exists.
+    if (_isPickingImage || !_canUploadId) return;
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -272,12 +276,20 @@ class _CommuterVerificationScreenState extends State<CommuterVerificationScreen>
               'Upload ID Photos',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black),
             ),
+            if (!_canUploadId)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Select a government ID type above to enable uploads.',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black45),
+                ),
+              ),
             const SizedBox(height: 10),
             _IdUploadTile(
               label: 'Front of ID',
               file: _frontImage,
               error: _frontError,
-              disabled: _isPickingImage,
+              disabled: _isPickingImage || !_canUploadId,
               onUpload: () => _pickImage(isFront: true),
               onRemove: () => _removeImage(isFront: true),
             ),
@@ -286,7 +298,7 @@ class _CommuterVerificationScreenState extends State<CommuterVerificationScreen>
               label: 'Back of ID',
               file: _backImage,
               error: _backError,
-              disabled: _isPickingImage,
+              disabled: _isPickingImage || !_canUploadId,
               onUpload: () => _pickImage(isFront: false),
               onRemove: () => _removeImage(isFront: false),
             ),
@@ -374,83 +386,93 @@ class _IdUploadTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = file != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: disabled ? null : onUpload,
+    return Opacity(
+      // Visually communicate the disabled (no-ID-type-yet) state, distinct
+      // from the transient "picker in flight" disabled state which doesn't
+      // need dimming since it's momentary.
+      opacity: disabled && !hasImage ? 0.5 : 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Material(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: error != null
-                      ? const Color(0xFFE23F3F)
-                      : (hasImage ? const Color(0xFF2E9E6D) : const Color(0xFFEDEDED)),
+            child: InkWell(
+              onTap: disabled ? null : onUpload,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: error != null
+                        ? const Color(0xFFE23F3F)
+                        : (hasImage ? const Color(0xFF2E9E6D) : const Color(0xFFEDEDED)),
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
-                ],
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: hasImage
-                        ? Image.file(file!, width: 56, height: 44, fit: BoxFit.cover)
-                        : Container(
-                            width: 56,
-                            height: 44,
-                            color: const Color(0xFFF5F6F8),
-                            child: const Icon(Icons.badge_outlined, color: Colors.black38, size: 22),
-                          ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          hasImage ? 'Photo selected' : 'Tap to take a photo or upload',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: hasImage ? const Color(0xFF2E9E6D) : Colors.black45,
-                          ),
-                        ),
-                      ],
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: hasImage
+                          ? Image.file(file!, width: 56, height: 44, fit: BoxFit.cover)
+                          : Container(
+                              width: 56,
+                              height: 44,
+                              color: const Color(0xFFF5F6F8),
+                              child: const Icon(Icons.badge_outlined, color: Colors.black38, size: 22),
+                            ),
                     ),
-                  ),
-                  if (hasImage)
-                    IconButton(
-                      onPressed: disabled ? null : onRemove,
-                      icon: const Icon(Icons.close_rounded, color: Colors.black45, size: 20),
-                    )
-                  else
-                    const Icon(Icons.upload_rounded, color: AppColors.logoBlue, size: 20),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            hasImage ? 'Photo selected' : 'Tap to take a photo or upload',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: hasImage ? const Color(0xFF2E9E6D) : Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (hasImage)
+                      IconButton(
+                        onPressed: disabled ? null : onRemove,
+                        icon: const Icon(Icons.close_rounded, color: Colors.black45, size: 20),
+                      )
+                    else
+                      Icon(
+                        Icons.upload_rounded,
+                        color: disabled ? Colors.black26 : AppColors.logoBlue,
+                        size: 20,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Text(
-              error!,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE23F3F)),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 4),
+              child: Text(
+                error!,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE23F3F)),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

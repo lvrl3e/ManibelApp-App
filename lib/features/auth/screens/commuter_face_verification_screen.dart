@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import 'commuter_verified_screen.dart';
 
@@ -12,7 +15,11 @@ class CommuterFaceVerificationScreen extends StatefulWidget {
 }
 
 class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificationScreen> {
-  bool _isCaptured = false;
+  final ImagePicker _picker = ImagePicker();
+
+  File? _capturedPhoto;
+  bool get _isCaptured => _capturedPhoto != null;
+
   bool _isProcessing = false; // covers both the capture and confirm requests
   String? _error;
 
@@ -25,11 +32,25 @@ class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificatio
     });
 
     try {
-      // TODO: replace with the real camera capture call.
-      await Future<void>.delayed(const Duration(milliseconds: 700));
+      // Front camera, since this is a selfie for identity verification —
+      // not a photo library pick, so the user can't submit an old/unrelated
+      // photo here the way they can for the ID front/back uploads.
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 85,
+      );
+
       if (!mounted) return;
+
+      if (picked == null) {
+        // User backed out of the camera without taking a photo.
+        setState(() => _isProcessing = false);
+        return;
+      }
+
       setState(() {
-        _isCaptured = true;
+        _capturedPhoto = File(picked.path);
         _isProcessing = false;
       });
     } catch (_) {
@@ -44,7 +65,7 @@ class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificatio
   void _handleRetake() {
     if (_isProcessing) return; // don't allow retake mid-request
     setState(() {
-      _isCaptured = false;
+      _capturedPhoto = null;
       _error = null;
     });
   }
@@ -64,7 +85,8 @@ class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificatio
     });
 
     try {
-      // TODO: replace with the real face-match verification call.
+      // TODO: replace with the real face-match verification call. The
+      // captured selfie is available at _capturedPhoto for that request.
       await Future<void>.delayed(const Duration(milliseconds: 1000));
       if (!mounted) return;
 
@@ -111,7 +133,10 @@ class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificatio
               const SizedBox(height: 28),
               Expanded(
                 child: Center(
-                  child: _FaceFrame(isCaptured: _isCaptured, isProcessing: _isProcessing && !_isCaptured),
+                  child: _FaceFrame(
+                    photo: _capturedPhoto,
+                    isProcessing: _isProcessing && !_isCaptured,
+                  ),
                 ),
               ),
               if (_error != null)
@@ -198,19 +223,22 @@ class _CommuterFaceVerificationScreenState extends State<CommuterFaceVerificatio
 }
 
 class _FaceFrame extends StatelessWidget {
-  const _FaceFrame({required this.isCaptured, required this.isProcessing});
+  const _FaceFrame({required this.photo, required this.isProcessing});
 
-  final bool isCaptured;
+  final File? photo;
   final bool isProcessing;
 
   @override
   Widget build(BuildContext context) {
+    final isCaptured = photo != null;
+
     return Stack(
       alignment: Alignment.center,
       children: [
         Container(
           width: 240,
           height: 300,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: isCaptured ? const Color(0xFFEAF1FE) : const Color(0xFFECEDEF),
             borderRadius: BorderRadius.circular(140),
@@ -219,11 +247,30 @@ class _FaceFrame extends StatelessWidget {
               width: 3,
             ),
           ),
-          child: Icon(
-            isCaptured ? Icons.check_circle_rounded : Icons.face_retouching_natural_rounded,
-            size: 72,
-            color: isCaptured ? const Color(0xFF2E9E6D) : Colors.black26,
-          ),
+          child: isCaptured
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(photo!, fit: BoxFit.cover),
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2E9E6D),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                )
+              : const Icon(
+                  Icons.face_retouching_natural_rounded,
+                  size: 72,
+                  color: Colors.black26,
+                ),
         ),
         if (isProcessing)
           const CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.logoBlue),
