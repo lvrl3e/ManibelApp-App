@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/services/user_session.dart';
 import '../../../core/utils/phone_utils.dart';
-import '../../auth/screens/commuter_login_screen.dart';
 import 'change_password_screen.dart';
 
 /// Value returned by [SettingsScreen] via `Navigator.pop` when the user
@@ -57,6 +57,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// [UserSession], same as the name/mobile fields.
   String? _photoPath;
 
+  // Snapshot of every field's value as of screen-open (or last successful
+  // save), used purely to detect whether anything has actually changed —
+  // the Save button stays disabled until it has.
+  late String _initialFullName;
+  late String _initialMobileNumber;
+  DateTime? _initialDateOfBirth;
+  String? _initialPhotoPath;
+
+  // Avatar / header sizing: the avatar is always centered on the banner's
+  // bottom edge — half overlapping the banner, half overlapping the
+  // scrollable white content beneath it — regardless of how tall the
+  // banner itself is.
+  static const double _avatarSize = 130;
+  static const double _headerHeight = 170;
+
   // Matches 09XXXXXXXXX (11 digits) or +63XXXXXXXXXX (10 digits after +63).
   static final RegExp _phMobileRegex =
       RegExp(r'^(?:\+63\d{10}|09\d{9})$');
@@ -84,13 +99,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     _dateOfBirth = widget.initialDateOfBirth ?? UserSession.instance.dateOfBirth;
     _photoPath = UserSession.instance.photoPath;
+
+    _initialFullName = _fullNameController.text;
+    _initialMobileNumber = _mobileNumberController.text;
+    _initialDateOfBirth = _dateOfBirth;
+    _initialPhotoPath = _photoPath;
+
+    // Re-evaluate whether Save should be enabled as the user types.
+    _fullNameController.addListener(_onFieldChanged);
+    _mobileNumberController.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
+    _fullNameController.removeListener(_onFieldChanged);
+    _mobileNumberController.removeListener(_onFieldChanged);
     _fullNameController.dispose();
     _mobileNumberController.dispose();
     super.dispose();
+  }
+
+  void _onFieldChanged() {
+    // Just triggers a rebuild so _hasChanges() is re-checked; the
+    // controllers themselves already hold the latest text.
+    setState(() {});
+  }
+
+  bool _isSameDate(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return a == b;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool get _hasChanges {
+    return _fullNameController.text != _initialFullName ||
+        _mobileNumberController.text != _initialMobileNumber ||
+        !_isSameDate(_dateOfBirth, _initialDateOfBirth) ||
+        _photoPath != _initialPhotoPath;
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -256,14 +300,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // TODO: navigate to the two-factor authentication setup screen.
   }
 
-  void _handleLogout() {
-    // TODO: clear auth token / session / cached user data here first.
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const CommuterLoginScreen()),
-      (route) => false,
-    );
-  }
-
   Future<void> _handleSave() async {
     final formValid = _formKey.currentState?.validate() ?? false;
     final dobError = _validateDateOfBirth(_dateOfBirth);
@@ -291,6 +327,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
 
+    // Reset the "changed" baseline to what was just saved, in case the
+    // user keeps editing instead of leaving the screen.
+    setState(() {
+      _initialFullName = updatedName;
+      _initialMobileNumber = updatedMobile;
+      _initialDateOfBirth = _dateOfBirth;
+      _initialPhotoPath = _photoPath;
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved.')),
     );
@@ -313,65 +358,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            children: [
-              _TopBar(onBack: () => Navigator.of(context).maybePop()),
-              const SizedBox(height: 24),
-              const _SectionTitle(title: 'Account Settings'),
-              const SizedBox(height: 16),
-              Center(
+        bottom: false,
+        child: Stack(
+          children: [
+            // ---------------------------------------------------------
+            // SCROLLABLE CONTENT — clipped to start below the avatar, so
+            // it can never scroll up behind the header banner; it's a
+            // separate layer confined to the region beneath it.
+            // ---------------------------------------------------------
+            Positioned.fill(
+              top: _headerHeight + (_avatarSize / 2) + 20,
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  children: [
+                    const _SectionTitle(title: 'Account Settings'),
+                    const SizedBox(height: 16),
+                    _SettingsField(
+                      label: 'Full Name',
+                      controller: _fullNameController,
+                      hintText: 'Enter your full name',
+                      validator: _validateFullName,
+                    ),
+                    const SizedBox(height: 12),
+                    _SettingsField(
+                      label: 'Mobile Number',
+                      controller: _mobileNumberController,
+                      hintText: '+63 XXX XXX XXXX',
+                      keyboardType: TextInputType.phone,
+                      validator: _validateMobileNumber,
+                    ),
+                    const SizedBox(height: 12),
+                    _SettingsDateField(
+                      label: 'Date of Birth',
+                      valueLabel: _dateOfBirthLabel,
+                      hasValue: _dateOfBirth != null,
+                      errorText: _dateOfBirthError,
+                      onTap: _pickDateOfBirth,
+                    ),
+                    const SizedBox(height: 24),
+                    const _SectionTitle(title: 'Security'),
+                    const SizedBox(height: 12),
+                    _SecurityItem(
+                      icon: Icons.lock_outline_rounded,
+                      label: 'Change Password',
+                      onTap: _handleChangePassword,
+                    ),
+                    const SizedBox(height: 12),
+                    _SecurityItem(
+                      icon: Icons.verified_user_outlined,
+                      label: 'Two Factor Authentication',
+                      onTap: _handleTwoFactorAuth,
+                    ),
+                    const SizedBox(height: 24),
+                    _SaveButton(
+                      enabled: _hasChanges,
+                      onTap: _handleSave,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ---------------------------------------------------------
+            // FIXED HEADER BANNER — back button pinned top-left; title
+            // and subtitle sit in the space between the back button row
+            // and the avatar overlap, so they scale with the banner
+            // instead of being pinned to a fixed row next to the button.
+            // ---------------------------------------------------------
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: _headerHeight,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, Color(0xFFFFDE7A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(28),
+                    bottomRight: Radius.circular(28),
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    16,
+                    20,
+                    // Leave room at the bottom for the avatar's top half.
+                    (_avatarSize / 2) + 12,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        elevation: 2,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => Navigator.of(context).maybePop(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Icon(Icons.arrow_back, size: 18, color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Settings',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.onPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Manage your account and preferences',
+                              style: TextStyle(fontSize: 10, color: Colors.black.withOpacity(0.55)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ---------------------------------------------------------
+            // AVATAR — fixed, centered horizontally, straddling the
+            // header/content boundary (half above, half below), with the
+            // edit button anchored to it.
+            // ---------------------------------------------------------
+            Positioned(
+              top: _headerHeight - (_avatarSize / 2),
+              left: 0,
+              right: 0,
+              child: Center(
                 child: _ProfilePhoto(
                   photoPath: _photoPath,
+                  size: _avatarSize,
                   onEditTap: _handleChangePhoto,
                 ),
               ),
-              const SizedBox(height: 24),
-              _SettingsField(
-                label: 'Full Name',
-                controller: _fullNameController,
-                hintText: 'Enter your full name',
-                validator: _validateFullName,
-              ),
-              const SizedBox(height: 12),
-              _SettingsField(
-                label: 'Mobile Number',
-                controller: _mobileNumberController,
-                hintText: '+63 XXX XXX XXXX',
-                keyboardType: TextInputType.phone,
-                validator: _validateMobileNumber,
-              ),
-              const SizedBox(height: 12),
-              _SettingsDateField(
-                label: 'Date of Birth',
-                valueLabel: _dateOfBirthLabel,
-                hasValue: _dateOfBirth != null,
-                errorText: _dateOfBirthError,
-                onTap: _pickDateOfBirth,
-              ),
-              const SizedBox(height: 24),
-              const _SectionTitle(title: 'Security'),
-              const SizedBox(height: 12),
-              _SecurityItem(
-                icon: Icons.lock_outline_rounded,
-                label: 'Change Password',
-                onTap: _handleChangePassword,
-              ),
-              const SizedBox(height: 12),
-              _SecurityItem(
-                icon: Icons.verified_user_outlined,
-                label: 'Two Factor Authentication',
-                onTap: _handleTwoFactorAuth,
-              ),
-              const SizedBox(height: 24),
-              _SaveButton(onTap: _handleSave),
-              const SizedBox(height: 12),
-              _LogOutButton(onTap: _handleLogout),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -383,59 +526,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// a real camera/gallery choice, and so `null` unambiguously means "sheet
 /// dismissed without picking anything."
 enum _PhotoAction { camera, gallery, remove }
-
-/// -----------------------------------------------------------------------
-/// TOP BAR
-/// -----------------------------------------------------------------------
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Material(
-          color: Colors.white,
-          shape: const CircleBorder(),
-          elevation: 2,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onBack,
-            child: const Padding(
-              padding: EdgeInsets.all(12),
-              child: Icon(Icons.arrow_back, size: 20, color: Colors.black87),
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black.withOpacity(0.9),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Manage your account and preferences',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
@@ -460,25 +550,38 @@ class _SectionTitle extends StatelessWidget {
 /// -----------------------------------------------------------------------
 
 class _ProfilePhoto extends StatelessWidget {
-  const _ProfilePhoto({required this.onEditTap, this.photoPath});
+  const _ProfilePhoto({
+    required this.onEditTap,
+    required this.size,
+    this.photoPath,
+  });
 
   final VoidCallback onEditTap;
+  final double size;
   final String? photoPath;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 130,
-      height: 130,
+      width: size,
+      height: size,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 130,
-            height: 130,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
-              color: const Color(0xFFE85D75),
+              color: const Color(0xFFD9D9D9),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
               image: photoPath != null
                   ? DecorationImage(
                       image: FileImage(File(photoPath!)),
@@ -487,10 +590,10 @@ class _ProfilePhoto extends StatelessWidget {
                   : null,
             ),
             child: photoPath == null
-                ? const Icon(
+                ? Icon(
                     Icons.person_rounded,
-                    size: 70,
-                    color: Colors.white,
+                    size: size * 0.54,
+                    color: AppColors.textSecondary,
                   )
                 : null,
           ),
@@ -505,12 +608,12 @@ class _ProfilePhoto extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.black87, width: 2),
+                  border: Border.all(color: AppColors.secondary, width: 2),
                 ),
                 child: const Icon(
                   Icons.camera_alt_rounded,
                   size: 20,
-                  color: Colors.black87,
+                  color: AppColors.secondary,
                 ),
               ),
             ),
@@ -659,13 +762,13 @@ class _SettingsDateField extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.black,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.calendar_today_rounded,
                     size: 18,
-                    color: Colors.white,
+                    color: AppColors.onPrimary,
                   ),
                 ),
               ],
@@ -718,7 +821,7 @@ class _SecurityItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: Colors.black87),
+            Icon(icon, size: 22, color: AppColors.secondary),
             const SizedBox(width: 14),
             Text(
               label,
@@ -740,75 +843,38 @@ class _SecurityItem extends StatelessWidget {
 /// -----------------------------------------------------------------------
 
 class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.onTap});
+  const _SaveButton({required this.onTap, required this.enabled});
 
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: enabled ? AppColors.primary : const Color(0xFFE6E6E7),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_rounded, size: 20, color: Colors.white),
-            SizedBox(width: 10),
+            Icon(
+              Icons.check_rounded,
+              size: 20,
+              color: enabled ? AppColors.onPrimary : Colors.grey.shade500,
+            ),
+            const SizedBox(width: 10),
             Text(
               'Save Changes',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// -----------------------------------------------------------------------
-/// LOG OUT BUTTON
-/// -----------------------------------------------------------------------
-
-class _LogOutButton extends StatelessWidget {
-  const _LogOutButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6B9BE),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0808A)),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout_rounded, size: 20, color: Colors.black87),
-            SizedBox(width: 10),
-            Text(
-              'Log Out',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Colors.black87,
+                color: enabled ? AppColors.onPrimary : Colors.grey.shade500,
               ),
             ),
           ],

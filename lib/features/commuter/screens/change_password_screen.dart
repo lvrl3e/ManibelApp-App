@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/services/user_session.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -21,7 +22,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
-  bool _isSubmitting = false;
 
   static const int _minLength = 8;
   static final RegExp _hasUppercase = RegExp(r'[A-Z]');
@@ -105,22 +105,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
-
     // TODO: once a backend exists, call it here to verify the current
     // password and persist the new one server-side instead of updating
     // the local session directly.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-
-    if (!mounted) return;
-
     final success = await UserSession.instance.updatePassword(
       currentPassword: _currentPasswordController.text,
       newPassword: _newPasswordController.text,
     );
 
     if (!mounted) return;
-    setState(() => _isSubmitting = false);
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,54 +133,59 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        bottom: false,
         child: Form(
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: EdgeInsets.zero,
             children: [
-              _TopBar(onBack: () => Navigator.of(context).maybePop()),
-              const SizedBox(height: 24),
-              _PasswordField(
-                label: 'Current Password',
-                controller: _currentPasswordController,
-                obscureText: _obscureCurrent,
-                hintText: 'Enter your current password',
-                onToggleObscure: () =>
-                    setState(() => _obscureCurrent = !_obscureCurrent),
-                validator: _validateCurrentPassword,
-              ),
-              const SizedBox(height: 12),
-              _PasswordField(
-                label: 'New Password',
-                controller: _newPasswordController,
-                obscureText: _obscureNew,
-                hintText: 'Enter a new password',
-                onToggleObscure: () =>
-                    setState(() => _obscureNew = !_obscureNew),
-                validator: _validateNewPassword,
-                onChanged: (_) {
-                  // Re-validate confirm field live so a stale "match" state
-                  // doesn't linger after the user edits the new password.
-                  _formKey.currentState?.validate();
-                },
-              ),
-              const SizedBox(height: 6),
-              const _PasswordRequirementsHint(),
-              const SizedBox(height: 18),
-              _PasswordField(
-                label: 'Confirm New Password',
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirm,
-                hintText: 'Re-enter your new password',
-                onToggleObscure: () =>
-                    setState(() => _obscureConfirm = !_obscureConfirm),
-                validator: _validateConfirmPassword,
-              ),
-              const SizedBox(height: 28),
-              _SubmitButton(
-                isLoading: _isSubmitting,
-                onTap: _isSubmitting ? null : _handleSubmit,
+              _buildHeader(),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Column(
+                  children: [
+                    _PasswordField(
+                      label: 'Current Password',
+                      controller: _currentPasswordController,
+                      obscureText: _obscureCurrent,
+                      hintText: 'Enter your current password',
+                      onToggleObscure: () =>
+                          setState(() => _obscureCurrent = !_obscureCurrent),
+                      validator: _validateCurrentPassword,
+                    ),
+                    const SizedBox(height: 12),
+                    _PasswordField(
+                      label: 'New Password',
+                      controller: _newPasswordController,
+                      obscureText: _obscureNew,
+                      hintText: 'Enter a new password',
+                      onToggleObscure: () =>
+                          setState(() => _obscureNew = !_obscureNew),
+                      validator: _validateNewPassword,
+                      onChanged: (_) {
+                        // Re-validate confirm field live so a stale "match" state
+                        // doesn't linger after the user edits the new password.
+                        _formKey.currentState?.validate();
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                    const _PasswordRequirementsHint(),
+                    const SizedBox(height: 18),
+                    _PasswordField(
+                      label: 'Confirm New Password',
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirm,
+                      hintText: 'Re-enter your new password',
+                      onToggleObscure: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                      validator: _validateConfirmPassword,
+                    ),
+                    const SizedBox(height: 28),
+                    _SubmitButton(onTap: _handleSubmit),
+                  ],
+                ),
               ),
             ],
           ),
@@ -195,57 +193,68 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
   }
-}
 
-/// -----------------------------------------------------------------------
-/// TOP BAR
-/// -----------------------------------------------------------------------
+  // ===============================================================
+  // HEADER
+  // ===============================================================
+  // Scrolls away with the rest of the content — the back button and the
+  // title/subtitle both live inside the yellow banner now.
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Material(
-          color: Colors.white,
-          shape: const CircleBorder(),
-          elevation: 2,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onBack,
-            child: const Padding(
-              padding: EdgeInsets.all(12),
-              child: Icon(Icons.arrow_back, size: 20, color: Colors.black87),
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 16, 20, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, Color(0xFFFFDE7A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            elevation: 2,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => Navigator.of(context).maybePop(),
+              child: const Padding(
+                padding: EdgeInsets.all(10),
+                child: Icon(Icons.arrow_back, size: 18, color: Colors.black87),
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Change Password',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black.withOpacity(0.9),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Change Password',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.onPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Keep your account secure with a strong password',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  'Keep your account secure with a strong password',
+                  style: TextStyle(fontSize: 10, color: Colors.black.withOpacity(0.55)),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -356,10 +365,9 @@ class _PasswordRequirementsHint extends StatelessWidget {
 /// -----------------------------------------------------------------------
 
 class _SubmitButton extends StatelessWidget {
-  const _SubmitButton({required this.isLoading, required this.onTap});
+  const _SubmitButton({required this.onTap});
 
-  final bool isLoading;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -370,33 +378,24 @@ class _SubmitButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.lock_reset_rounded, size: 20, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text(
-                    'Update Password',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_reset_rounded, size: 20, color: AppColors.onPrimary),
+            SizedBox(width: 10),
+            Text(
+              'Update Password',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onPrimary,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

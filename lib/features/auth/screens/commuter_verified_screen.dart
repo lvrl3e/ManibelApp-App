@@ -20,8 +20,8 @@ class CommuterVerifiedScreen extends StatelessWidget {
               Container(
                 width: 96,
                 height: 96,
-                decoration: const BoxDecoration(color: Color(0xFFDCEFE6), shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, color: Color(0xFF2E9E6D), size: 52),
+                decoration: const BoxDecoration(color: AppColors.settingsTileBg, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: AppColors.logoBlue, size: 52),
               ),
               const SizedBox(height: 24),
               const Text(
@@ -45,14 +45,14 @@ class CommuterVerifiedScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.logoBlue,
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: const Text(
                     'Continue to Dashboard',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.onPrimary),
                   ),
                 ),
               ),

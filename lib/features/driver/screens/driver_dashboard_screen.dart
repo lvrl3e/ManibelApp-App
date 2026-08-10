@@ -47,12 +47,19 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: AppColors.logoBlue),
+              decoration: const BoxDecoration(color: AppColors.primary),
               accountName: Text(
                 widget.driverName,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppColors.onPrimary,
+                ),
               ),
-              accountEmail: Text('Driver ID: ${widget.driverId}'),
+              accountEmail: Text(
+                'Driver ID: ${widget.driverId}',
+                style: const TextStyle(color: AppColors.onPrimary),
+              ),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, size: 40, color: AppColors.logoBlue),
@@ -88,20 +95,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           onPressed: () {
             // TODO: Start Trip logic
           },
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.primary,
           elevation: 4,
           shape: const CircleBorder(
-            side: BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
+            side: BorderSide(color: Color(0xFFE0A800), width: 1.5),
           ),
           child: const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.directions_bus, color: AppColors.logoBlue, size: 28),
+              Icon(Icons.directions_bus, color: AppColors.onPrimary, size: 28),
               SizedBox(height: 2),
               Text(
                 'Start Trip',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: AppColors.onPrimary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -372,8 +379,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.account_balance_wallet,
-                      iconBg: const Color(0xFFFEF3C7),
-                      iconColor: const Color(0xFFD97706),
+                      iconBg: AppColors.qrTileBg,
+                      iconColor: AppColors.qrIconColor,
                       title: 'Earnings',
                       value: '₱${widget.earningsToday.toStringAsFixed(0)}',
                       subtitle: 'Today',
@@ -386,8 +393,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               // Operations Dashboard Link Card
               _buildNavigationCard(
                 icon: Icons.local_gas_station,
-                iconBg: const Color(0xFFDCFCE7),
-                iconColor: Colors.green.shade700,
+                iconBg: AppColors.settingsTileBg,
+                iconColor: AppColors.settingsIconColor,
                 title: 'Daily Operations Dashboard',
                 subtitle: 'Check if your revenue is higher than your gas expense',
                 onTap: () {},

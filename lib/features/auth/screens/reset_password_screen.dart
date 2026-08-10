@@ -204,7 +204,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   width: 70,
                   height: 70,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEAF1FE),
+                    color: AppColors.settingsTileBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(
@@ -283,7 +283,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _resetPassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE5A800),
+                      backgroundColor: AppColors.splashBackground,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),

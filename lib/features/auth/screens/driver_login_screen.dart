@@ -115,7 +115,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     ),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF2F2F2),
+                      fillColor: AppColors.inputFieldFill,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -146,7 +146,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFFF2F2F2),
+                      fillColor: AppColors.inputFieldFill,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -201,7 +201,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE5A800),
+                        backgroundColor: AppColors.splashBackground,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
