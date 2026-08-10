@@ -166,6 +166,7 @@ class CommuterMenuDrawer extends StatelessWidget {
         ),
         child: Stack(
           clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
           children: [
             Positioned(
               right: -36,

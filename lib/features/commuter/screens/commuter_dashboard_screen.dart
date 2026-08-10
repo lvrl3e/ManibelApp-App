@@ -9,6 +9,7 @@ import 'jeepney_booking_flow_screen.dart';
 import 'commuter_menu_drawer.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
+import 'commuter_history_screen.dart';
 import '../../../core/services/user_session.dart';
 import '../../auth/screens/commuter_login_screen.dart';
 
@@ -121,6 +122,8 @@ class _CommuterDashboardScreenState extends State<CommuterDashboardScreen> {
 
   Future<void> _handleLogout(BuildContext context) async {
     await UserSession.instance.signOut();
+    await CommuterHistoryScreen.clearOnLogout();
+    await NotificationsScreen.clearOnLogout();
 
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

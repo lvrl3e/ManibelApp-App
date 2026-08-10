@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/fare_calculator.dart';
 import 'notifications_screen.dart';
@@ -42,6 +44,32 @@ class TripHistoryItem {
       );
 
   String get ridersLabel => fareBreakdown.ridersLabel;
+
+  Map<String, dynamic> _toJson() => {
+        'tripId': tripId,
+        'driverName': driverName,
+        'plateNumber': plateNumber,
+        'route': route,
+        'boardingPoint': boardingPoint,
+        'regularRiders': regularRiders,
+        'studentRiders': studentRiders,
+        'seniorRiders': seniorRiders,
+        'dateTime': dateTime,
+        'fare': fare,
+      };
+
+  static TripHistoryItem _fromJson(Map<String, dynamic> json) => TripHistoryItem(
+        tripId: json['tripId'] as String,
+        driverName: json['driverName'] as String,
+        plateNumber: json['plateNumber'] as String,
+        route: json['route'] as String,
+        boardingPoint: json['boardingPoint'] as String,
+        regularRiders: json['regularRiders'] as int,
+        studentRiders: json['studentRiders'] as int,
+        seniorRiders: json['seniorRiders'] as int,
+        dateTime: json['dateTime'] as String,
+        fare: json['fare'] as String,
+      );
 }
 
 // ===========================================================================
@@ -53,14 +81,66 @@ class CommuterHistoryScreen extends StatelessWidget {
     super.key,
   });
 
+  static const _kHistoryPrefsKey = 'commuter_trip_history_v1';
+  static const _kRatedPrefsKey = 'commuter_rated_trip_ids_v1';
+  static const _kReportedPrefsKey = 'commuter_reported_trip_ids_v1';
+
   // Mutable so completed bookings (see JeepneyBookingFlowScreen) can be
   // appended here — this is the single source of truth for trip history.
   // Starts empty; a trip only shows up once the commuter actually books one.
+  // Persisted to disk — logging out must never erase a commuter's trip
+  // history.
   static final List<TripHistoryItem> _history = [];
+  static bool _loaded = false;
+
+  /// Loads whatever was previously persisted, once. Safe to call
+  /// repeatedly — a no-op after the first successful load.
+  static Future<void> loadFromPrefs() async {
+    if (_loaded) return;
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final rawHistory = prefs.getStringList(_kHistoryPrefsKey);
+      if (rawHistory != null) {
+        _history
+          ..clear()
+          ..addAll(rawHistory.map((s) => TripHistoryItem._fromJson(jsonDecode(s) as Map<String, dynamic>)));
+      }
+      _ratedTripIds
+        ..clear()
+        ..addAll(prefs.getStringList(_kRatedPrefsKey) ?? const []);
+      _reportedTripIds
+        ..clear()
+        ..addAll(prefs.getStringList(_kReportedPrefsKey) ?? const []);
+    } catch (_) {
+      // Corrupt/old-format data on disk — start clean rather than crash.
+    }
+    _loaded = true;
+  }
+
+  static Future<void> _persistHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kHistoryPrefsKey, _history.map((t) => jsonEncode(t._toJson())).toList());
+  }
+
+  static Future<void> _persistRatedAndReported() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kRatedPrefsKey, _ratedTripIds.toList());
+    await prefs.setStringList(_kReportedPrefsKey, _reportedTripIds.toList());
+  }
 
   /// Records a just-completed booking at the top of the history list.
-  static void addTrip(TripHistoryItem trip) {
+  static Future<void> addTrip(TripHistoryItem trip) async {
     _history.insert(0, trip);
+    await _persistHistory();
+  }
+
+  /// Wipes trip history (and rated/reported markers) on logout, per request.
+  static Future<void> clearOnLogout() async {
+    _history.clear();
+    _ratedTripIds.clear();
+    _reportedTripIds.clear();
+    await _persistHistory();
+    await _persistRatedAndReported();
   }
 
   // Tracks trips a commuter has already rated / reported, keyed by tripId,
@@ -436,6 +516,7 @@ class _CommuterTripDetailsScreenState
     setState(() {
       CommuterHistoryScreen._ratedTripIds.add(widget.trip.tripId);
     });
+    CommuterHistoryScreen._persistRatedAndReported();
 
     NotificationsScreen.push(
       AppNotification(
@@ -1231,6 +1312,7 @@ class _ReportDriverScreenState
     setState(() {
       CommuterHistoryScreen._reportedTripIds.add(widget.trip.tripId);
     });
+    CommuterHistoryScreen._persistRatedAndReported();
 
     NotificationsScreen.push(
       AppNotification(

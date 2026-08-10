@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import 'commuter_login_screen.dart';
+import 'driver_login_screen.dart';
 
 class PasswordResetSuccessScreen extends StatelessWidget {
-  const PasswordResetSuccessScreen({super.key});
+  const PasswordResetSuccessScreen({super.key, this.isDriver = false});
+
+  /// Whether to route back to the driver login screen instead of the
+  /// commuter one.
+  final bool isDriver;
 
   @override
   Widget build(BuildContext context) {
@@ -66,8 +71,9 @@ class PasswordResetSuccessScreen extends StatelessWidget {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              const CommuterLoginScreen(),
+                          builder: (_) => isDriver
+                              ? const DriverLoginScreen()
+                              : const CommuterLoginScreen(),
                         ),
                         (route) => false,
                       );

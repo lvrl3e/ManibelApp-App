@@ -177,12 +177,6 @@ class _JeepneyBookingFlowScreenState extends State<JeepneyBookingFlowScreen> {
   static const _routes = [
     'Pasig - Quiapo',
     'Quiapo - Pasig',
-    'Pasig - Cubao',
-    'Cubao - Pasig',
-    'Pasig - Marikina',
-    'Marikina - Pasig',
-    'Quiapo - Divisoria',
-    'Divisoria - Quiapo',
   ];
 
   static const _availableJeepneys = [

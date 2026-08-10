@@ -306,10 +306,6 @@ class EmergencyHotlinesScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  'Quick access to help when you need it most',
-                  style: TextStyle(fontSize: 10, color: Colors.black.withOpacity(0.55)),
-                ),
               ],
             ),
           ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../commuter/screens/commuter_dashboard_screen.dart';
+import '../../commuter/screens/commuter_history_screen.dart';
+import '../../commuter/screens/notifications_screen.dart';
 
 class CommuterVerifiedScreen extends StatelessWidget {
   const CommuterVerifiedScreen({super.key, required this.idType});
@@ -38,7 +40,13 @@ class CommuterVerifiedScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    // Load whatever's already persisted for this account
+                    // (e.g. re-verifying an existing commuter) before the
+                    // dashboard ever builds.
+                    await CommuterHistoryScreen.loadFromPrefs();
+                    await NotificationsScreen.loadFromPrefs();
+                    if (!context.mounted) return;
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const CommuterDashboardScreen()),
                       (route) => false,
